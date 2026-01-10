@@ -1,3 +1,5 @@
+@Library('shared-library') _  // Import our shared library!
+
 pipeline {
     agent any
     
@@ -37,7 +39,8 @@ pipeline {
             steps {
                 script {
                     dir('app') {
-                        sh "docker build -t ${DOCKER_HUB_REPO}:${env.IMAGE_VERSION} ."
+                        // Using shared library function! 🎉
+                        buildDockerImage("${DOCKER_HUB_REPO}", "${env.IMAGE_VERSION}")
                     }
                 }
             }
@@ -52,7 +55,8 @@ pipeline {
                         passwordVariable: 'DOCKER_PASS'
                     )]) {
                         sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
-                        sh "docker push ${DOCKER_HUB_REPO}:${env.IMAGE_VERSION}"
+                        // Using shared library function! 🎉
+                        pushDockerImage("${DOCKER_HUB_REPO}", "${env.IMAGE_VERSION}")
                     }
                 }
             }
@@ -75,6 +79,26 @@ pipeline {
                         '''
                     }
                 }
+            }
+        }
+    }
+    
+    post {
+        success {
+            script {
+                // Using shared library function! 🎉
+                sendNotification('SUCCESS', "Pipeline completed! Version ${env.IMAGE_VERSION} deployed successfully.")
+            }
+        }
+        failure {
+            script {
+                // Using shared library function! 🎉
+                sendNotification('FAILURE', "Pipeline failed! Check logs for details.")
+            }
+        }
+        unstable {
+            script {
+                sendNotification('UNSTABLE', "Build is unstable. Review test results.")
             }
         }
     }
