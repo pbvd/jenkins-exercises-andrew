@@ -1,3 +1,4 @@
+---
 # Create GitLab CI/CD pipeline file
 # GitLab CI/CD Pipeline - Exercise 2 Translation
 # This does the SAME thing as the Jenkinsfile
@@ -20,9 +21,9 @@ increment_version:
   script:
     - cd app
     - npm version minor --no-git-tag-version
-    - export NEW_VERSION=$(node -p "require('./package.json').version")
-    - echo "NEW_VERSION=$NEW_VERSION" >> version.env
-    - echo "New version: $NEW_VERSION"
+    - NEW_VERSION=$(node -p "require('./package.json').version")
+    - echo "NEW_VERSION=$NEW_VERSION" >> ../version.env
+    - 'echo "New version: $NEW_VERSION"'
   artifacts:
     reports:
       dotenv: version.env
@@ -87,8 +88,7 @@ commit_version:
     - git config user.name "GitLab CI Pipeline"
     - git remote set-url origin https://oauth2:${GITLAB_TOKEN}@gitlab.com/${CI_PROJECT_PATH}.git
     - git add app/package.json app/package-lock.json
-    - git commit -m "chore: Bump version to ${NEW_VERSION} [skip ci]"
+    - 'git commit -m "chore: Bump version to ${NEW_VERSION} [skip ci]"'
     - git push origin HEAD:${CI_COMMIT_REF_NAME}
   only:
     - master
-EOF:
