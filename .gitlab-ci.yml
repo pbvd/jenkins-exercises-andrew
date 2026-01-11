@@ -21,7 +21,7 @@ increment_version:
     - npm version minor --no-git-tag-version
     - NEW_VERSION=$(node -p "require('./package.json').version")
     - echo "NEW_VERSION=$NEW_VERSION" >> ../version.env
-    - echo "New version: $NEW_VERSION"
+    - echo "New version $NEW_VERSION"
   artifacts:
     reports:
       dotenv: version.env
