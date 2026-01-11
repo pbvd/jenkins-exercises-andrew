@@ -1,0 +1,94 @@
+# Create GitLab CI/CD pipeline file
+# GitLab CI/CD Pipeline - Exercise 2 Translation
+# This does the SAME thing as the Jenkinsfile
+
+stages:
+  - version
+  - test
+  - build
+  - push
+  - commit
+
+variables:
+  DOCKER_HUB_REPO: "pbvld/nodejs-bootcamp-app"
+  DOCKER_DRIVER: overlay2
+
+# Stage 1: Increment Version
+increment_version:
+  stage: version
+  image: node:20-alpine
+  script:
+    - cd app
+    - npm version minor --no-git-tag-version
+    - export NEW_VERSION=$(node -p "require('./package.json').version")
+    - echo "NEW_VERSION=$NEW_VERSION" >> version.env
+    - echo "New version: $NEW_VERSION"
+  artifacts:
+    reports:
+      dotenv: version.env
+    paths:
+      - app/package.json
+      - app/package-lock.json
+    expire_in: 1 hour
+
+# Stage 2: Run Tests
+run_tests:
+  stage: test
+  image: node:20-alpine
+  dependencies:
+    - increment_version
+  script:
+    - cd app
+    - npm install
+    - npm test
+
+# Stage 3: Build Docker Image
+build_image:
+  stage: build
+  image: docker:24-cli
+  services:
+    - docker:24-dind
+  dependencies:
+    - increment_version
+  script:
+    - cd app
+    - docker build -t ${DOCKER_HUB_REPO}:${NEW_VERSION} .
+    - docker save ${DOCKER_HUB_REPO}:${NEW_VERSION} -o ../image.tar
+  artifacts:
+    paths:
+      - image.tar
+    expire_in: 1 hour
+
+# Stage 4: Push to Docker Hub
+push_image:
+  stage: push
+  image: docker:24-cli
+  services:
+    - docker:24-dind
+  dependencies:
+    - build_image
+    - increment_version
+  script:
+    - docker load -i image.tar
+    - echo "$DOCKER_HUB_PASSWORD" | docker login -u "$DOCKER_HUB_USERNAME" --password-stdin
+    - docker push ${DOCKER_HUB_REPO}:${NEW_VERSION}
+    - echo "✅ Pushed ${DOCKER_HUB_REPO}:${NEW_VERSION} to Docker Hub"
+
+# Stage 5: Commit Version Change
+commit_version:
+  stage: commit
+  image: alpine/git:latest
+  dependencies:
+    - increment_version
+  before_script:
+    - apk add --no-cache nodejs npm
+  script:
+    - git config user.email "gitlab-ci@pipeline.com"
+    - git config user.name "GitLab CI Pipeline"
+    - git remote set-url origin https://oauth2:${GITLAB_TOKEN}@gitlab.com/${CI_PROJECT_PATH}.git
+    - git add app/package.json app/package-lock.json
+    - git commit -m "chore: Bump version to ${NEW_VERSION} [skip ci]"
+    - git push origin HEAD:${CI_COMMIT_REF_NAME}
+  only:
+    - master
+EOF
