@@ -91,4 +91,4 @@ commit_version:
     - git push origin HEAD:${CI_COMMIT_REF_NAME}
   only:
     - master
-EOF
+EOF:
